@@ -4,18 +4,22 @@
 declare(strict_types=1);
 
 // Detect if running from PHAR or source
-if (Phar::running()) {
+// Check if source autoload exists to determine context
+$sourceAutoload = __DIR__ . '/../vendor/autoload.php';
+$isPhar = !file_exists($sourceAutoload);
+
+if ($isPhar) {
     Phar::mapPhar('php-composer-mcp.phar');
 }
 
 define('VERSION', '__VERSION__');
 
 // Autoload from PHAR or source tree
-if (Phar::running()) {
+if ($isPhar) {
     /** @phpstan-ignore-next-line */
     require_once 'phar://php-composer-mcp.phar/vendor/autoload.php';
 } else {
-    require_once __DIR__ . '/../vendor/autoload.php';
+    require_once $sourceAutoload;
 }
 
 use PhpMcp\Server\Server;
@@ -51,7 +55,7 @@ try {
         ->build();
 
     // Discover MCP tools via attributes in the Tools directory
-    $basePath = Phar::running() ? 'phar://php-composer-mcp.phar' : dirname(__DIR__);
+    $basePath = $isPhar ? 'phar://php-composer-mcp.phar' : dirname(__DIR__);
     $server->discover(
         basePath: $basePath,
         scanDirs: ['src/Tools']
