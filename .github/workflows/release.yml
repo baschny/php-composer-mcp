@@ -1,0 +1,83 @@
+name: Build and Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-phar:
+    name: Build PHAR and Upload to Release
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, phar
+          coverage: none
+          tools: composer:v2
+          ini-values: phar.readonly=Off
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies (production only)
+        run: composer install --no-dev --no-progress --prefer-dist --optimize-autoloader --no-interaction --ansi
+
+      - name: Build PHAR
+        run: php -d phar.readonly=0 build/build-phar.php
+
+      - name: Verify PHAR
+        run: |
+          if [ ! -f build/php-composer-mcp.phar ]; then
+            echo "Error: PHAR file not found!"
+            exit 1
+          fi
+          echo "PHAR file created successfully"
+          ls -lh build/php-composer-mcp.phar
+          php build/php-composer-mcp.phar --version
+
+      - name: Get release tag
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Upload PHAR to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build/php-composer-mcp.phar
+          asset_name: php-composer-mcp.phar
+          asset_content_type: application/octet-stream
+
+      - name: Create SHA256 checksum
+        run: |
+          cd build
+          sha256sum php-composer-mcp.phar > php-composer-mcp.phar.sha256
+          cat php-composer-mcp.phar.sha256
+
+      - name: Upload checksum to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build/php-composer-mcp.phar.sha256
+          asset_name: php-composer-mcp.phar.sha256
+          asset_content_type: text/plain
