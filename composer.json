@@ -1,0 +1,43 @@
+{
+    "name": "cron/php-composer-mcp",
+    "description": "MCP server for Composer package management and project maintenance via AI assistance",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ernesto Baschny",
+            "email": "eb@cron.eu"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "php-mcp/server": "^3.3",
+        "guzzlehttp/guzzle": "^7.9",
+        "symfony/console": "^7.2",
+        "symfony/process": "^7.2"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.0",
+        "friendsofphp/php-cs-fixer": "^3.75"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/mcp-server.php"
+    ],
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

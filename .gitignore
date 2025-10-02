@@ -1,0 +1,26 @@
+# Composer
+/vendor/
+composer.lock
+
+# Cache
+/.cache/
+
+# IDEs
+/.idea/
+/.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP CS Fixer
+.php-cs-fixer.cache
+
+# PHPStan
+phpstan-baseline.neon
+
+# Testing
+.phpunit.result.cache
+/coverage/
