@@ -7,8 +7,10 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Co
 - 🔍 **Package Search**: Search for packages on Packagist.org
 - 📦 **Package Information**: Get detailed information about specific packages
 - 📄 **Composer.json Parsing**: Read and analyze composer.json files
-- 🔧 **Project Analysis**: Analyze dependencies, security, and project health (coming soon)
-- ⬆️ **Upgrade Suggestions**: Get intelligent upgrade recommendations (coming soon)
+- 🔧 **Project Analysis**: Analyze dependencies, outdated packages, security vulnerabilities, and project health
+- ⬆️ **Upgrade Suggestions**: Get intelligent upgrade recommendations with semantic versioning support
+- 🔒 **Security Auditing**: Check for known security vulnerabilities using Composer's audit feature
+- ✅ **Project Validation**: Validate composer.json and composer.lock files
 
 ## Requirements
 
@@ -109,14 +111,27 @@ Read and parse a composer.json file.
 Read /path/to/project/composer.json
 ```
 
-### 4. `analyze_project` (Coming Soon)
+### 4. `analyze_project`
 
 Analyze a Composer project for issues and improvements.
 
 **Parameters:**
 - `projectPath` (string, required): Path to the project directory
 
-### 5. `suggest_upgrades` (Coming Soon)
+**Returns:**
+- Project metadata and configuration
+- Validation results (composer.json and composer.lock)
+- Dependency statistics
+- Outdated packages list
+- Security vulnerability report
+- Actionable suggestions with severity levels
+
+**Example:**
+```
+Analyze the Composer project at /path/to/my-project
+```
+
+### 5. `suggest_upgrades`
 
 Suggest available package upgrades for a project.
 
@@ -124,6 +139,16 @@ Suggest available package upgrades for a project.
 - `projectPath` (string, required): Path to the project directory
 - `includeMajor` (boolean, optional): Include major version upgrades (default: false)
 
+**Returns:**
+- List of available upgrades
+- Categorization by update type (patch, minor, major)
+- Current and latest versions
+- Summary statistics
+
+**Example:**
+```
+Suggest safe upgrades for /path/to/my-project
+```
 ## Development
 
 ### Code Quality
@@ -166,13 +191,17 @@ php-composer-mcp/
 - [x] Package search functionality
 - [x] Package information retrieval
 - [x] Composer.json file reading
-- [ ] Project dependency analysis
-- [ ] Security vulnerability scanning
-- [ ] Upgrade path suggestions
+- [x] Project dependency analysis
+- [x] Security vulnerability scanning
+- [x] Upgrade path suggestions
+- [x] Integration with Composer commands
+- [x] Project validation
+- [x] Outdated package detection
 - [ ] composer.json modification tools
-- [ ] Lock file analysis
 - [ ] Automated upgrade execution
-- [ ] Integration with Composer commands
+- [ ] Interactive dependency resolution
+- [ ] Custom repository support
+- [ ] Platform requirements checking
 
 ## Contributing
 

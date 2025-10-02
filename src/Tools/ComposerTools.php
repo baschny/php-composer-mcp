@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Tools;
 
 use App\Services\PackagistService;
+use App\Services\ComposerService;
 use PhpMcp\Server\Attributes\McpTool;
 use PhpMcp\Server\Attributes\Schema;
 
 class ComposerTools
 {
     private PackagistService $packagistService;
+    private ComposerService $composerService;
 
     public function __construct()
     {
         $this->packagistService = new PackagistService();
+        $this->composerService = new ComposerService();
     }
 
     /**
@@ -34,7 +37,6 @@ class ComposerTools
         #[Schema(type: 'integer', minimum: 1, maximum: 100)]
         int $perPage = 15
     ): array {
-        // TODO: Implement package search
         return $this->packagistService->search($query, $perPage);
     }
 
@@ -52,7 +54,6 @@ class ComposerTools
         #[Schema(type: 'string', pattern: '^[a-z0-9]([_.-]?[a-z0-9]+)*/[a-z0-9]([_.-]?[a-z0-9]+)*$')]
         string $packageName
     ): array {
-        // TODO: Implement package info retrieval
         return $this->packagistService->getPackage($packageName);
     }
 
@@ -70,7 +71,6 @@ class ComposerTools
         #[Schema(type: 'string', minLength: 1)]
         string $path
     ): array {
-        // TODO: Implement composer.json reading
         if (!file_exists($path)) {
             throw new \InvalidArgumentException("File not found: {$path}");
         }
@@ -106,12 +106,87 @@ class ComposerTools
         #[Schema(type: 'string', minLength: 1)]
         string $projectPath
     ): array {
-        // TODO: Implement project analysis
-        // - Check for outdated packages
-        // - Check for security vulnerabilities
-        // - Analyze dependency tree
-        // - Provide upgrade suggestions
-        throw new \LogicException('Project analysis not yet implemented');
+        // Validate project directory
+        if (!is_dir($projectPath)) {
+            throw new \InvalidArgumentException("Project directory not found: {$projectPath}");
+        }
+
+        $composerJsonPath = rtrim($projectPath, '/') . '/composer.json';
+        if (!file_exists($composerJsonPath)) {
+            throw new \InvalidArgumentException("composer.json not found in: {$projectPath}");
+        }
+
+        // Read composer.json
+        $composerJson = $this->readComposerJson($composerJsonPath);
+
+        // Validate the project
+        $validation = $this->composerService->validateProject($projectPath);
+
+        // Get installed packages
+        $installed = $this->composerService->getInstalledPackages($projectPath);
+
+        // Check for outdated packages
+        $outdated = $this->composerService->getOutdatedPackages($projectPath);
+
+        // Audit for security vulnerabilities
+        $security = $this->composerService->auditPackages($projectPath);
+
+        // Generate suggestions based on the analysis
+        $suggestions = [];
+
+        if (!$validation['valid']) {
+            $suggestions[] = [
+                'type' => 'validation',
+                'severity' => 'error',
+                'message' => 'Project validation failed. Run `composer validate` for details.',
+                'details' => $validation,
+            ];
+        }
+
+        if (count($outdated['outdated']) > 0) {
+            $suggestions[] = [
+                'type' => 'outdated',
+                'severity' => 'warning',
+                'message' => 'Found ' . count($outdated['outdated']) . ' outdated package(s). Consider updating them.',
+                'packages' => array_keys($outdated['outdated']),
+            ];
+        }
+
+        if ($security['summary']['has_vulnerabilities'] ?? false) {
+            $suggestions[] = [
+                'type' => 'security',
+                'severity' => 'critical',
+                'message' => 'Found ' . $security['summary']['total'] . ' security vulnerabilit(ies). Update affected packages immediately!',
+                'details' => $security['summary'],
+            ];
+        }
+
+        return [
+            'project' => [
+                'name' => $composerJson['name'] ?? 'unknown',
+                'path' => $projectPath,
+                'type' => $composerJson['type'] ?? 'library',
+            ],
+            'validation' => $validation,
+            'dependencies' => [
+                'total' => count($installed['installed']),
+                'require' => count($composerJson['require'] ?? []),
+                'require-dev' => count($composerJson['require-dev'] ?? []),
+            ],
+            'outdated' => [
+                'total' => count($outdated['outdated']),
+                'packages' => array_values($outdated['outdated']),
+            ],
+            'security' => $security,
+            'suggestions' => $suggestions,
+            'summary' => [
+                'total_packages' => count($installed['installed']),
+                'outdated_count' => count($outdated['outdated']),
+                'security_issues' => $security['summary']['total'] ?? 0,
+                'validation_errors' => count($validation['errors']),
+                'validation_warnings' => count($validation['warnings']),
+            ],
+        ];
     }
 
     /**
@@ -131,11 +206,110 @@ class ComposerTools
         #[Schema(type: 'boolean')]
         bool $includeMajor = false
     ): array {
-        // TODO: Implement upgrade suggestions
-        // - Parse composer.json and composer.lock
-        // - Check for available updates
-        // - Categorize by update type (major, minor, patch)
-        // - Check compatibility
-        throw new \LogicException('Upgrade suggestions not yet implemented');
+        // Validate project directory
+        if (!is_dir($projectPath)) {
+            throw new \InvalidArgumentException("Project directory not found: {$projectPath}");
+        }
+
+        // Check for outdated packages
+        $outdated = $this->composerService->getOutdatedPackages($projectPath);
+
+        $upgrades = [];
+        foreach ($outdated['outdated'] as $name => $package) {
+            $currentVersion = $package['version'] ?? 'unknown';
+            $latestVersion = $package['latest'] ?? 'unknown';
+            $latestStatus = $package['latest-status'] ?? 'unknown';
+
+            // Determine update type
+            $updateType = $this->determineUpdateType($currentVersion, $latestVersion, $latestStatus);
+
+            // Skip major updates if not requested
+            if ($updateType === 'major' && !$includeMajor) {
+                continue;
+            }
+
+            $upgrades[] = [
+                'package' => $name,
+                'current' => $currentVersion,
+                'latest' => $latestVersion,
+                'type' => $updateType,
+                'status' => $latestStatus,
+                'description' => $package['description'] ?? '',
+            ];
+        }
+
+        // Sort by update type priority (patch < minor < major)
+        usort($upgrades, function ($a, $b) {
+            $priority = ['patch' => 1, 'minor' => 2, 'major' => 3];
+            return ($priority[$a['type']] ?? 4) <=> ($priority[$b['type']] ?? 4);
+        });
+
+        return [
+            'upgrades' => $upgrades,
+            'summary' => [
+                'total' => count($upgrades),
+                'by_type' => [
+                    'patch' => count(array_filter($upgrades, fn($u) => $u['type'] === 'patch')),
+                    'minor' => count(array_filter($upgrades, fn($u) => $u['type'] === 'minor')),
+                    'major' => count(array_filter($upgrades, fn($u) => $u['type'] === 'major')),
+                ],
+                'included_major' => $includeMajor,
+            ],
+        ];
+    }
+
+    /**
+     * Determine the update type based on version comparison.
+     *
+     * @param string $current Current version
+     * @param string $latest Latest version
+     * @param string $status Latest status from composer
+     * @return string Update type: 'major', 'minor', 'patch', or 'unknown'
+     */
+    private function determineUpdateType(string $current, string $latest, string $status): string
+    {
+        // Use composer's status if available
+        if ($status === 'semver-safe-update' || $status === 'update-possible') {
+            // Parse versions to determine type
+            $currentParts = $this->parseVersion($current);
+            $latestParts = $this->parseVersion($latest);
+
+            if ($currentParts && $latestParts) {
+                if ($currentParts['major'] !== $latestParts['major']) {
+                    return 'major';
+                }
+                if ($currentParts['minor'] !== $latestParts['minor']) {
+                    return 'minor';
+                }
+                if ($currentParts['patch'] !== $latestParts['patch']) {
+                    return 'patch';
+                }
+            }
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * Parse a semantic version string.
+     *
+     * @param string $version Version string
+     * @return array{major: int, minor: int, patch: int}|null Parsed version or null
+     */
+    private function parseVersion(string $version): ?array
+    {
+        // Remove 'v' prefix if present
+        $version = ltrim($version, 'v');
+        
+        // Match semantic versioning pattern
+        if (preg_match('/^(\d+)\.(\d+)\.(\d+)/', $version, $matches)) {
+            return [
+                'major' => (int) $matches[1],
+                'minor' => (int) $matches[2],
+                'patch' => (int) $matches[3],
+            ];
+        }
+
+        return null;
     }
 }
