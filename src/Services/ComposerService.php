@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * Service to interact with Composer via CLI commands.
@@ -62,7 +61,7 @@ class ComposerService
         }
 
         $data = json_decode($result['output'], true);
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             throw new \RuntimeException('Invalid JSON output from composer outdated');
         }
 
@@ -94,7 +93,7 @@ class ComposerService
         }
 
         $data = json_decode($result['output'], true);
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             throw new \RuntimeException('Invalid JSON output from composer show');
         }
 
@@ -124,7 +123,7 @@ class ComposerService
         }
 
         $data = json_decode($result['output'], true);
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             // If audit isn't available or fails, return empty results
             return [
                 'advisories' => [],
@@ -199,7 +198,7 @@ class ComposerService
         // Parse output to get dependents
         $dependents = [];
         $lines = explode("\n", $result['output']);
-        
+
         foreach ($lines as $line) {
             // Match lines like: "vendor/package version requires"
             if (preg_match('/^([a-z0-9\-_\/]+)\s+([^\s]+)/i', trim($line), $matches)) {

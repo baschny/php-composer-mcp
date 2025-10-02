@@ -5,12 +5,12 @@ declare(strict_types=1);
 
 /**
  * PHAR Build Script for PHP Composer MCP Server
- * 
+ *
  * This script creates a standalone PHAR executable from the MCP server code.
  */
 
 // Enable phar creation (required for building)
-if (!Phar::canWrite()) {
+if (! Phar::canWrite()) {
     echo "Error: PHAR writing is disabled. Set phar.readonly=Off in php.ini\n";
     exit(1);
 }
@@ -26,9 +26,10 @@ $configBackup = $configFile . '.backup';
 /**
  * Restore backup files to their original locations
  */
-function restoreBackups() {
+function restoreBackups()
+{
     global $mainScriptBackup, $stubFile, $configBackup, $configFile;
-    
+
     if (file_exists($mainScriptBackup)) {
         echo "Restoring main script from backup...\n";
         rename($mainScriptBackup, $stubFile);
@@ -42,7 +43,8 @@ function restoreBackups() {
 /**
  * Signal handler for cleanup on interrupt
  */
-function signalHandler(int $signal) {
+function signalHandler(int $signal)
+{
     echo "\n\nReceived signal $signal, cleaning up...\n";
     restoreBackups();
     exit(1);
@@ -55,7 +57,7 @@ if (function_exists('pcntl_signal')) {
 }
 
 // Register shutdown function to ensure cleanup on any exit
-register_shutdown_function(function() {
+register_shutdown_function(function () {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
         echo "\n\nFatal error detected, cleaning up...\n";
@@ -93,16 +95,16 @@ try {
     // Create new PHAR
     $phar = new Phar($pharFile);
     $phar->startBuffering();
-    
+
     // Set signature algorithm
     $phar->setSignatureAlgorithm(Phar::SHA256);
-    
+
     // Add all project files (excluding unwanted directories and files)
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($projectRoot, RecursiveDirectoryIterator::SKIP_DOTS),
         RecursiveIteratorIterator::LEAVES_ONLY
     );
-    
+
     $excludePatterns = [
         '/\.git/',
         '/build/',
@@ -118,59 +120,60 @@ try {
         '/LICENSE/',
         '/\.DS_Store/',
     ];
-    
+
     $includedFiles = 0;
     foreach ($iterator as $file) {
         $relativePath = str_replace($projectRoot . '/', '', $file->getPathname());
-        
+
         // Skip excluded files/directories
         $exclude = false;
         foreach ($excludePatterns as $pattern) {
             if (preg_match($pattern, '/' . $relativePath)) {
                 $exclude = true;
+
                 break;
             }
         }
-        
+
         if ($exclude) {
             continue;
         }
-        
+
         // Add file to PHAR
         $phar->addFile($file->getPathname(), $relativePath);
         $includedFiles++;
-        
+
         if ($includedFiles % 100 === 0) {
             echo "Added $includedFiles files...\n";
         }
     }
-    
+
     echo "Total files added: $includedFiles\n";
-    
+
     // Use the main script as stub (already updated with version)
     echo "Creating PHAR stub from main script...\n";
     $stubContent = file_get_contents($stubFile);
     // Add __HALT_COMPILER() at the end for PHAR
     $stub = $stubContent . "\n__HALT_COMPILER();";
-    
+
     $phar->setStub($stub);
     $phar->stopBuffering();
-    
+
     // Make the PHAR executable
     chmod($pharFile, 0755);
-    
+
     echo "PHAR created successfully: $pharFile\n";
     echo "Size: " . number_format(filesize($pharFile)) . " bytes\n";
-    
+
     // Restore original files
     echo "Restoring original files...\n";
     restoreBackups();
-    
+
 } catch (Exception $e) {
     echo "Error creating PHAR: " . $e->getMessage() . "\n";
-    
+
     // Restore original files on error
     restoreBackups();
-    
+
     exit(1);
 }

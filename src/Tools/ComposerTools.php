@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tools;
 
-use App\Services\PackagistService;
 use App\Services\ComposerService;
+use App\Services\PackagistService;
 use PhpMcp\Server\Attributes\McpTool;
 use PhpMcp\Server\Attributes\Schema;
 
@@ -71,11 +71,11 @@ class ComposerTools
         #[Schema(type: 'string', minLength: 1)]
         string $path
     ): array {
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new \InvalidArgumentException("File not found: {$path}");
         }
 
-        if (!is_readable($path)) {
+        if (! is_readable($path)) {
             throw new \InvalidArgumentException("File not readable: {$path}");
         }
 
@@ -107,12 +107,12 @@ class ComposerTools
         string $projectPath
     ): array {
         // Validate project directory
-        if (!is_dir($projectPath)) {
+        if (! is_dir($projectPath)) {
             throw new \InvalidArgumentException("Project directory not found: {$projectPath}");
         }
 
         $composerJsonPath = rtrim($projectPath, '/') . '/composer.json';
-        if (!file_exists($composerJsonPath)) {
+        if (! file_exists($composerJsonPath)) {
             throw new \InvalidArgumentException("composer.json not found in: {$projectPath}");
         }
 
@@ -134,7 +134,7 @@ class ComposerTools
         // Generate suggestions based on the analysis
         $suggestions = [];
 
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             $suggestions[] = [
                 'type' => 'validation',
                 'severity' => 'error',
@@ -207,7 +207,7 @@ class ComposerTools
         bool $includeMajor = false
     ): array {
         // Validate project directory
-        if (!is_dir($projectPath)) {
+        if (! is_dir($projectPath)) {
             throw new \InvalidArgumentException("Project directory not found: {$projectPath}");
         }
 
@@ -224,7 +224,7 @@ class ComposerTools
             $updateType = $this->determineUpdateType($currentVersion, $latestVersion, $latestStatus);
 
             // Skip major updates if not requested
-            if ($updateType === 'major' && !$includeMajor) {
+            if ($updateType === 'major' && ! $includeMajor) {
                 continue;
             }
 
@@ -241,6 +241,7 @@ class ComposerTools
         // Sort by update type priority (patch < minor < major)
         usort($upgrades, function ($a, $b) {
             $priority = ['patch' => 1, 'minor' => 2, 'major' => 3];
+
             return ($priority[$a['type']] ?? 4) <=> ($priority[$b['type']] ?? 4);
         });
 
@@ -249,9 +250,9 @@ class ComposerTools
             'summary' => [
                 'total' => count($upgrades),
                 'by_type' => [
-                    'patch' => count(array_filter($upgrades, fn($u) => $u['type'] === 'patch')),
-                    'minor' => count(array_filter($upgrades, fn($u) => $u['type'] === 'minor')),
-                    'major' => count(array_filter($upgrades, fn($u) => $u['type'] === 'major')),
+                    'patch' => count(array_filter($upgrades, fn ($u) => $u['type'] === 'patch')),
+                    'minor' => count(array_filter($upgrades, fn ($u) => $u['type'] === 'minor')),
+                    'major' => count(array_filter($upgrades, fn ($u) => $u['type'] === 'major')),
                 ],
                 'included_major' => $includeMajor,
             ],
@@ -300,7 +301,7 @@ class ComposerTools
     {
         // Remove 'v' prefix if present
         $version = ltrim($version, 'v');
-        
+
         // Match semantic versioning pattern
         if (preg_match('/^(\d+)\.(\d+)\.(\d+)/', $version, $matches)) {
             return [

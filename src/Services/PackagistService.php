@@ -44,8 +44,8 @@ class PackagistService
             ]);
 
             $data = json_decode((string) $response->getBody(), true);
-            
-            if (!is_array($data)) {
+
+            if (! is_array($data)) {
                 throw new \RuntimeException('Invalid response from Packagist API');
             }
 
@@ -75,8 +75,8 @@ class PackagistService
             $response = $this->client->get("/packages/{$packageName}.json");
 
             $data = json_decode((string) $response->getBody(), true);
-            
-            if (!is_array($data)) {
+
+            if (! is_array($data)) {
                 throw new \RuntimeException('Invalid response from Packagist API');
             }
 
@@ -102,7 +102,7 @@ class PackagistService
     {
         $packageData = $this->getPackage($packageName);
 
-        if (!isset($packageData['package']['versions'][$version])) {
+        if (! isset($packageData['package']['versions'][$version])) {
             throw new \RuntimeException(
                 "Version '{$version}' not found for package '{$packageName}'"
             );
@@ -138,8 +138,8 @@ class PackagistService
             $response = $this->client->get("/packages/{$packageName}/stats.json");
 
             $data = json_decode((string) $response->getBody(), true);
-            
-            if (!is_array($data)) {
+
+            if (! is_array($data)) {
                 throw new \RuntimeException('Invalid response from Packagist API');
             }
 
