@@ -66,6 +66,7 @@ ls -la build/php-composer-mcp.phar
 The build process is configured via:
 - `build/build-config.json` - Build configuration settings
 - `build/build-phar.php` - Main build script
+- `bin/mcp-server.php` - Main entry point (works as both source script and PHAR stub)
 - `Makefile` - Build automation
 
 ## Troubleshooting

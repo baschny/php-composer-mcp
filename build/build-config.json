@@ -1,6 +1,6 @@
 {
     "name": "php-composer-mcp",
-    "version": "1.0.0",
+    "version": "__VERSION__",
     "output": "build/php-composer-mcp.phar",
     "main": "bin/mcp-server.php",
     "include": [

@@ -19,6 +19,68 @@ $projectRoot = dirname(__DIR__);
 $buildDir = __DIR__;
 $pharFile = $buildDir . '/php-composer-mcp.phar';
 $stubFile = $projectRoot . '/bin/mcp-server.php';
+$mainScriptBackup = $stubFile . '.backup';
+$configFile = $buildDir . '/build-config.json';
+$configBackup = $configFile . '.backup';
+
+/**
+ * Restore backup files to their original locations
+ */
+function restoreBackups() {
+    global $mainScriptBackup, $stubFile, $configBackup, $configFile;
+    
+    if (file_exists($mainScriptBackup)) {
+        echo "Restoring main script from backup...\n";
+        rename($mainScriptBackup, $stubFile);
+    }
+    if (file_exists($configBackup)) {
+        echo "Restoring config from backup...\n";
+        rename($configBackup, $configFile);
+    }
+}
+
+/**
+ * Signal handler for cleanup on interrupt
+ */
+function signalHandler(int $signal) {
+    echo "\n\nReceived signal $signal, cleaning up...\n";
+    restoreBackups();
+    exit(1);
+}
+
+// Register signal handlers for graceful shutdown
+if (function_exists('pcntl_signal')) {
+    pcntl_signal(SIGINT, 'signalHandler');  // Ctrl+C
+    pcntl_signal(SIGTERM, 'signalHandler'); // kill command
+}
+
+// Register shutdown function to ensure cleanup on any exit
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        echo "\n\nFatal error detected, cleaning up...\n";
+        restoreBackups();
+    }
+});
+
+// Get version from git
+echo "Getting version from git...\n";
+$version = trim(shell_exec('cd ' . escapeshellarg($projectRoot) . ' && git describe --tags --always --dirty 2>/dev/null') ?: 'dev-unknown');
+echo "Version: $version\n";
+
+// Backup and update version in main script
+echo "Updating version in main script...\n";
+copy($stubFile, $mainScriptBackup);
+$mainScriptContent = file_get_contents($stubFile);
+$mainScriptContent = str_replace('__VERSION__', $version, $mainScriptContent);
+file_put_contents($stubFile, $mainScriptContent);
+
+// Backup and update version in build config
+echo "Updating version in build configuration...\n";
+copy($configFile, $configBackup);
+$configContent = file_get_contents($configFile);
+$configContent = str_replace('__VERSION__', $version, $configContent);
+file_put_contents($configFile, $configContent);
 
 // Remove existing PHAR if it exists
 if (file_exists($pharFile)) {
@@ -85,68 +147,11 @@ try {
     
     echo "Total files added: $includedFiles\n";
     
-    // Create a custom stub that properly handles the PHAR environment
-    $stub = <<<'STUB'
-#!/usr/bin/env php
-<?php
-
-declare(strict_types=1);
-
-Phar::mapPhar('php-composer-mcp.phar');
-
-// Set up autoloading from within the PHAR
-require_once 'phar://php-composer-mcp.phar/vendor/autoload.php';
-
-use PhpMcp\Server\Server;
-use PhpMcp\Server\Transports\StdioServerTransport;
-
-// Handle command line arguments
-if (isset($argv[1])) {
-    switch ($argv[1]) {
-        case '-v':
-        case '--version':
-            echo "PHP Composer MCP Server v1.0.0\n";
-            exit(0);
-        case '-h':
-        case '--help':
-            echo "PHP Composer MCP Server v1.0.0\n";
-            echo "\nUsage: {$argv[0]} [options]\n";
-            echo "\nOptions:\n";
-            echo "  -v, --version    Show version information\n";
-            echo "  -h, --help       Show this help message\n";
-            echo "\nWithout options, starts the MCP server on stdio transport.\n";
-            exit(0);
-        default:
-            fwrite(STDERR, "Unknown option: {$argv[1]}\n");
-            fwrite(STDERR, "Use -h or --help for usage information.\n");
-            exit(1);
-    }
-}
-
-try {
-    // Build server configuration
-    $server = Server::make()
-        ->withServerInfo('PHP Composer MCP Server', '1.0.0')
-        ->build();
-
-    // Discover MCP tools via attributes in the Tools directory
-    $server->discover(
-        basePath: 'phar://php-composer-mcp.phar',
-        scanDirs: ['src/Tools']
-    );
-
-    // Start listening via stdio transport
-    $transport = new StdioServerTransport();
-    $server->listen($transport);
-
-} catch (\Throwable $e) {
-    fwrite(STDERR, "[CRITICAL ERROR] " . $e->getMessage() . "\n");
-    fwrite(STDERR, "Stack trace:\n" . $e->getTraceAsString() . "\n");
-    exit(1);
-}
-
-__HALT_COMPILER();
-STUB;
+    // Use the main script as stub (already updated with version)
+    echo "Creating PHAR stub from main script...\n";
+    $stubContent = file_get_contents($stubFile);
+    // Add __HALT_COMPILER() at the end for PHAR
+    $stub = $stubContent . "\n__HALT_COMPILER();";
     
     $phar->setStub($stub);
     $phar->stopBuffering();
@@ -157,7 +162,15 @@ STUB;
     echo "PHAR created successfully: $pharFile\n";
     echo "Size: " . number_format(filesize($pharFile)) . " bytes\n";
     
+    // Restore original files
+    echo "Restoring original files...\n";
+    restoreBackups();
+    
 } catch (Exception $e) {
     echo "Error creating PHAR: " . $e->getMessage() . "\n";
+    
+    // Restore original files on error
+    restoreBackups();
+    
     exit(1);
 }

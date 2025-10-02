@@ -3,20 +3,56 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// Detect if running from PHAR or source
+if (Phar::running()) {
+    Phar::mapPhar('php-composer-mcp.phar');
+}
+
+define('VERSION', '__VERSION__');
+
+// Autoload from PHAR or source tree
+if (Phar::running()) {
+    require_once 'phar://php-composer-mcp.phar/vendor/autoload.php';
+} else {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
 
 use PhpMcp\Server\Server;
 use PhpMcp\Server\Transports\StdioServerTransport;
 
+// Handle command line arguments
+if (isset($argv[1])) {
+    switch ($argv[1]) {
+        case '-v':
+        case '--version':
+            echo "PHP Composer MCP Server v" . VERSION . "\n";
+            exit(0);
+        case '-h':
+        case '--help':
+            echo "PHP Composer MCP Server v" . VERSION . "\n";
+            echo "\nUsage: {$argv[0]} [options]\n";
+            echo "\nOptions:\n";
+            echo "  -v, --version    Show version information\n";
+            echo "  -h, --help       Show this help message\n";
+            echo "\nWithout options, starts the MCP server on stdio transport.\n";
+            exit(0);
+        default:
+            fwrite(STDERR, "Unknown option: {$argv[1]}\n");
+            fwrite(STDERR, "Use -h or --help for usage information.\n");
+            exit(1);
+    }
+}
+
 try {
     // Build server configuration
     $server = Server::make()
-        ->withServerInfo('PHP Composer MCP Server', '1.0.0')
+        ->withServerInfo('PHP Composer MCP Server', VERSION)
         ->build();
 
     // Discover MCP tools via attributes in the Tools directory
+    $basePath = Phar::running() ? 'phar://php-composer-mcp.phar' : dirname(__DIR__);
     $server->discover(
-        basePath: dirname(__DIR__),
+        basePath: $basePath,
         scanDirs: ['src/Tools']
     );
 

@@ -27,7 +27,7 @@ class ComposerTools
      * @param int $perPage Number of results per page (default: 15, max: 100)
      * @return array{results: array<array{name: string, description: string, downloads: int, favers: int}>, total: int}
      */
-    #[McpTool(name: 'search_packages', description: 'Search for packages on Packagist.org')]
+    #[McpTool(name: 'search_packages', description: 'Search for PHP composer packages on Packagist.org')]
     public function searchPackages(
         #[Schema(type: 'string', minLength: 2)]
         string $query,
@@ -47,7 +47,7 @@ class ComposerTools
      * @param string $packageName The full package name (vendor/package)
      * @return array{package: array{name: string, description: string, versions: array, maintainers: array}}
      */
-    #[McpTool(name: 'get_package_info', description: 'Get detailed information about a Composer package')]
+    #[McpTool(name: 'get_package_info', description: 'Get detailed information about a PHP composer package')]
     public function getPackageInfo(
         #[Schema(type: 'string', pattern: '^[a-z0-9]([_.-]?[a-z0-9]+)*/[a-z0-9]([_.-]?[a-z0-9]+)*$')]
         string $packageName

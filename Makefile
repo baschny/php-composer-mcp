@@ -40,6 +40,7 @@ test: build
 
 release: clean build test
 	@echo "Creating release package..."
-	@VERSION=$$(grep '"version"' build/build-config.json | cut -d'"' -f4); \
+	@VERSION=$$(./build/php-composer-mcp.phar -v | sed 's/.*v//'); \
 	cd build && tar -czf php-composer-mcp-$$VERSION.tar.gz php-composer-mcp.phar; \
-	echo "Release package created: build/php-composer-mcp-$$VERSION.tar.gz"
+	echo "Release package created: build/php-composer-mcp-$$VERSION.tar.gz"; \
+	echo "Version: $$VERSION"

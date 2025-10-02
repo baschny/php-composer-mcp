@@ -28,3 +28,4 @@ phpstan-baseline.neon
 # Build artefacts
 build/*.phar
 build/*.tar.gz
+*.backup
