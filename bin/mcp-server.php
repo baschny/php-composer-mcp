@@ -6,7 +6,7 @@ declare(strict_types=1);
 // Detect if running from PHAR or source
 // Check if source autoload exists to determine context
 $sourceAutoload = __DIR__ . '/../vendor/autoload.php';
-$isPhar = !file_exists($sourceAutoload);
+$isPhar = ! file_exists($sourceAutoload);
 
 if ($isPhar) {
     Phar::mapPhar('php-composer-mcp.phar');
