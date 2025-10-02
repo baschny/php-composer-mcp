@@ -1,0 +1,34 @@
+{
+    "name": "php-composer-mcp",
+    "version": "1.0.0",
+    "output": "build/php-composer-mcp.phar",
+    "main": "bin/mcp-server.php",
+    "include": [
+        "src/",
+        "vendor/",
+        "composer.json",
+        "bin/"
+    ],
+    "exclude": [
+        ".git/",
+        ".github/",
+        "build/",
+        "tests/",
+        ".phpunit/",
+        "phpunit.xml",
+        ".php-cs-fixer.php",
+        ".php-cs-fixer.cache",
+        "phpstan.neon",
+        "composer.lock",
+        ".gitignore",
+        "README.md",
+        "LICENSE",
+        ".DS_Store",
+        "*.log",
+        "*.tmp",
+        ".env*"
+    ],
+    "compression": "NONE",
+    "signature": "SHA256",
+    "shebang": "#!/usr/bin/env php"
+}

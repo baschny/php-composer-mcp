@@ -33,6 +33,10 @@
     "bin": [
         "bin/mcp-server.php"
     ],
+    "scripts": {
+        "build-phar": "php build/build-phar.php",
+        "build-phar-check": "php -d phar.readonly=0 build/build-phar.php"
+    },
     "config": {
         "sort-packages": true,
         "optimize-autoloader": true,

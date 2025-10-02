@@ -24,3 +24,7 @@ phpstan-baseline.neon
 # Testing
 .phpunit.result.cache
 /coverage/
+
+# Build artefacts
+build/*.phar
+build/*.tar.gz
