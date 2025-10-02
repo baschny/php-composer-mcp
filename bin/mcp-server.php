@@ -12,6 +12,7 @@ define('VERSION', '__VERSION__');
 
 // Autoload from PHAR or source tree
 if (Phar::running()) {
+    /** @phpstan-ignore-next-line */
     require_once 'phar://php-composer-mcp.phar/vendor/autoload.php';
 } else {
     require_once __DIR__ . '/../vendor/autoload.php';

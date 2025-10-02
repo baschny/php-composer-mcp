@@ -34,7 +34,7 @@ class ComposerService
 
         return [
             'output' => $process->getOutput(),
-            'exitCode' => $process->getExitCode(),
+            'exitCode' => $process->getExitCode() ?? 0,
         ];
     }
 
@@ -42,7 +42,7 @@ class ComposerService
      * Check for outdated packages in a project.
      *
      * @param string $projectPath Path to the project directory
-     * @return array{installed: array, outdated: array}
+     * @return array{installed: array<mixed>, outdated: array<mixed>}
      * @throws \RuntimeException If the command fails
      */
     public function getOutdatedPackages(string $projectPath): array
@@ -78,7 +78,7 @@ class ComposerService
      * Show information about installed packages.
      *
      * @param string $projectPath Path to the project directory
-     * @return array{installed: array}
+     * @return array{installed: array<mixed>}
      * @throws \RuntimeException If the command fails
      */
     public function getInstalledPackages(string $projectPath): array
@@ -107,7 +107,7 @@ class ComposerService
      * Audit packages for known security vulnerabilities.
      *
      * @param string $projectPath Path to the project directory
-     * @return array{advisories: array, summary: array}
+     * @return array{advisories: array<mixed>, summary: array<string, mixed>}
      * @throws \RuntimeException If the command fails
      */
     public function auditPackages(string $projectPath): array
@@ -145,7 +145,7 @@ class ComposerService
      * Validate composer.json and composer.lock files.
      *
      * @param string $projectPath Path to the project directory
-     * @return array{valid: bool, errors: array, warnings: array}
+     * @return array{valid: bool, errors: array<string>, warnings: array<string>}
      * @throws \RuntimeException If the command fails
      */
     public function validateProject(string $projectPath): array
@@ -185,7 +185,7 @@ class ComposerService
      *
      * @param string $projectPath Path to the project directory
      * @param string $packageName Package name to check
-     * @return array{dependents: array}
+     * @return array{dependents: array<mixed>}
      * @throws \RuntimeException If the command fails
      */
     public function getDependents(string $projectPath, string $packageName): array

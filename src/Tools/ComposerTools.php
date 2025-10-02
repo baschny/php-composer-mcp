@@ -47,7 +47,7 @@ class ComposerTools
      * all versions, maintainers, dependencies, and statistics.
      *
      * @param string $packageName The full package name (vendor/package)
-     * @return array{package: array{name: string, description: string, versions: array, maintainers: array}}
+     * @return array<mixed>
      */
     #[McpTool(name: 'get_package_info', description: 'Get detailed information about a PHP composer package')]
     public function getPackageInfo(
@@ -64,7 +64,7 @@ class ComposerTools
      * parsed contents as an array.
      *
      * @param string $path Absolute path to the composer.json file
-     * @return array{name: string, require: array, require-dev: array, autoload: array}
+     * @return array<mixed>
      */
     #[McpTool(name: 'read_composer_json', description: 'Read and parse a composer.json file')]
     public function readComposerJson(
@@ -99,7 +99,7 @@ class ComposerTools
      * insights about dependencies, security issues, and outdated packages.
      *
      * @param string $projectPath Path to the project directory containing composer.json
-     * @return array{dependencies: array, outdated: array, security: array, suggestions: array}
+     * @return array<mixed>
      */
     #[McpTool(name: 'analyze_project', description: 'Analyze a Composer project for issues and improvements')]
     public function analyzeProject(
@@ -163,15 +163,15 @@ class ComposerTools
 
         return [
             'project' => [
-                'name' => $composerJson['name'] ?? 'unknown',
+                'name' => $composerJson['name'],
                 'path' => $projectPath,
-                'type' => $composerJson['type'] ?? 'library',
+                'type' => is_string($composerJson['type'] ?? null) ? $composerJson['type'] : 'library',
             ],
             'validation' => $validation,
             'dependencies' => [
                 'total' => count($installed['installed']),
-                'require' => count($composerJson['require'] ?? []),
-                'require-dev' => count($composerJson['require-dev'] ?? []),
+                'require' => count($composerJson['require']),
+                'require-dev' => count($composerJson['require-dev']),
             ],
             'outdated' => [
                 'total' => count($outdated['outdated']),

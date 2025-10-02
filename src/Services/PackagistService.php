@@ -30,7 +30,7 @@ class PackagistService
      *
      * @param string $query Search query
      * @param int $perPage Results per page (max 100)
-     * @return array{results: array, total: int}
+     * @return array{results: array<mixed>, total: int}
      * @throws \RuntimeException If the request fails
      */
     public function search(string $query, int $perPage = 15): array
@@ -66,7 +66,7 @@ class PackagistService
      * Get detailed information about a package.
      *
      * @param string $packageName Full package name (vendor/package)
-     * @return array Package information
+     * @return array<mixed> Package information
      * @throws \RuntimeException If the request fails
      */
     public function getPackage(string $packageName): array
@@ -95,7 +95,7 @@ class PackagistService
      *
      * @param string $packageName Full package name (vendor/package)
      * @param string $version Version constraint (e.g., "1.0.0", "dev-main")
-     * @return array Version information
+     * @return array<mixed> Version information
      * @throws \RuntimeException If the request fails
      */
     public function getPackageVersion(string $packageName, string $version): array
@@ -115,7 +115,7 @@ class PackagistService
      * Get all versions of a package.
      *
      * @param string $packageName Full package name (vendor/package)
-     * @return array<string, array> Versions indexed by version string
+     * @return array<string, array<mixed>> Versions indexed by version string
      * @throws \RuntimeException If the request fails
      */
     public function getPackageVersions(string $packageName): array
@@ -129,7 +129,7 @@ class PackagistService
      * Get statistics for a package.
      *
      * @param string $packageName Full package name (vendor/package)
-     * @return array{downloads: array, dependents: int, suggesters: int, favers: int}
+     * @return array{downloads: array<mixed>, dependents: int, suggesters: int, favers: int}
      * @throws \RuntimeException If the request fails
      */
     public function getPackageStats(string $packageName): array
