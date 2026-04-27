@@ -10,6 +10,10 @@ $isPhar = ! file_exists($sourceAutoload);
 
 if ($isPhar) {
     Phar::mapPhar('php-composer-mcp.phar');
+    // Get the actual PHAR path for use in discovery
+    $pharPath = Phar::running(false);
+} else {
+    $pharPath = null;
 }
 
 define('VERSION', '__VERSION__');
@@ -55,7 +59,8 @@ try {
         ->build();
 
     // Discover MCP tools via attributes in the Tools directory
-    $basePath = $isPhar ? 'phar://php-composer-mcp.phar' : dirname(__DIR__);
+    // Use the full phar:// path when running from PHAR, or source directory otherwise
+    $basePath = $isPhar ? $pharPath : dirname(__DIR__);
     $server->discover(
         basePath: $basePath,
         scanDirs: ['src/Tools']
