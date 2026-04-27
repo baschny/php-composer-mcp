@@ -144,7 +144,7 @@ class ComposerService
      * Validate composer.json and composer.lock files.
      *
      * @param string $projectPath Path to the project directory
-     * @return array{valid: bool, errors: array<string>, warnings: array<string>}
+     * @return array{valid: bool, errors: array<string>, warnings: array<string>, output: string}
      * @throws \RuntimeException If the command fails
      */
     public function validateProject(string $projectPath): array

@@ -11,8 +11,9 @@
     ],
     "require": {
         "php": "^8.4",
-        "php-mcp/server": "^3.3",
+        "composer/semver": "^3.4",
         "guzzlehttp/guzzle": "^7.9",
+        "php-mcp/server": "^3.3",
         "symfony/console": "^7.2",
         "symfony/process": "^7.2"
     },

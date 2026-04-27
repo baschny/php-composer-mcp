@@ -12,8 +12,9 @@ class PackagistService
     private const BASE_URL = 'https://packagist.org';
 
     private Client $client;
+    private VersionFilter $versionFilter;
 
-    public function __construct(?Client $client = null)
+    public function __construct(?Client $client = null, ?VersionFilter $versionFilter = null)
     {
         $this->client = $client ?? new Client([
             'base_uri' => self::BASE_URL,
@@ -23,6 +24,30 @@ class PackagistService
                 'User-Agent' => 'PHP-Composer-MCP/1.0',
             ],
         ]);
+        $this->versionFilter = $versionFilter ?? new VersionFilter();
+    }
+
+    /**
+     * Fetch a package payload and apply the slim/filter pipeline.
+     *
+     * Returns the same structure as `getPackage()`, but with the per-version
+     * data filtered, sorted newest-first, and stripped of noise fields.
+     *
+     * @param array{
+     *     versionConstraint?: string|null,
+     *     includeDev?: bool,
+     *     verbose?: bool,
+     *     relevantRequires?: array<int, string>,
+     *     maxVersions?: int|null,
+     * } $options
+     * @return array<mixed>
+     * @throws \RuntimeException If the request fails
+     */
+    public function getPackageFiltered(string $packageName, array $options = []): array
+    {
+        $payload = $this->getPackage($packageName);
+
+        return $this->versionFilter->filterPayload($payload, $options);
     }
 
     /**
