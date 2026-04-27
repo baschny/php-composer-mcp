@@ -63,6 +63,17 @@ Add this JSON to your preferred AI tool as described in one of the documentation
 }
 ```
 
+## Token-saving design
+
+Packagist payloads for popular packages are huge — `typo3/cms-core` alone is ~965 KB (277 versions × heavy per-version metadata). For agent workflows, that quickly drowns the context window.
+
+The MCP tools in this server are designed to keep responses small by default:
+
+- `get_package_info` filters versions by Composer constraint, sorts newest-first, strips noise fields (`authors`, `dist`, `source`, `autoload`, `support`, `funding`, …) and limits the per-version `require` map to `php` plus any keys you ask for via `relevantRequires`. Filtering `typo3/cms-core` to `^12.0` brings the payload down from ~965 KB to ~24 KB.
+- `find_compatible_versions` returns just the latest version of a single package matching a target constraint, with PHP and the optional framework requirement only — typically a few hundred bytes.
+- `plan_framework_upgrade` is a single-call replacement for the dozens of `get_package_info` calls an agent would otherwise make during a major framework upgrade.
+- `analyze_project` and `suggest_upgrades` ship a compact response by default; pass `verbose=true` to get the full payload when you need it.
+
 ## Available Tools
 
 ### 1. `search_packages`
@@ -75,40 +86,74 @@ Search for packages on Packagist.org.
 
 ### 2. `get_package_info`
 
-Get detailed information about a specific package.
+Get filtered, slim package info from Packagist.org.
 
 **Parameters:**
 - `packageName` (string, required): Full package name (vendor/package)
+- `versionConstraint` (string, optional): Composer constraint to filter versions (e.g. `^12.0`, `~11.5.0`, `>=12.4 <13`)
+- `includeDev` (boolean, optional): Include dev branches (`dev-main`, `*-dev`). Default: `false`
+- `verbose` (boolean, optional): Return full per-version data (`require-dev`, full `require` map). Default: `false`
+- `relevantRequires` (array of strings, optional): Package names whose entries to keep in each version's `require` map (e.g. `["typo3/cms-core"]`, `["laravel/framework"]`). Default: only `php` is kept in non-verbose mode.
+- `maxVersions` (integer, optional): Cap on returned versions (newest first). Default: `25`. Use `0` to disable the cap.
 
-### 3. `read_composer_json`
+### 3. `find_compatible_versions`
+
+Find versions of a single package that satisfy an upgrade target constraint. Designed for upgrade planning across any framework.
+
+**Parameters:**
+- `packageName` (string, required): Full package name (vendor/package)
+- `targetConstraint` (string, required): Composer constraint (e.g. `^12.0`, `^10.0`, `^5.0`)
+- `frameworkPackage` (string, optional): Framework package whose required constraint should be surfaced (e.g. `typo3/cms-core`, `laravel/framework`)
+- `latestOnly` (boolean, optional): Return only the single best match. Default: `true`
+- `includeDev` (boolean, optional): Include dev branches. Default: `false`
+
+**Returns:** A compact `{ package, targetConstraint, latest, candidates, totalCandidates }` object.
+
+### 4. `plan_framework_upgrade`
+
+Plan a major framework upgrade (TYPO3, Neos/Flow, Laravel, CakePHP, Symfony, …) in a single MCP call. Replaces dozens of `get_package_info` calls with a compact, grouped report.
+
+**Parameters:**
+- `projectPath` (string, required): Path to the project directory containing `composer.json`
+- `frameworkPackage` (string, required): Framework package name (e.g. `typo3/cms-core`, `laravel/framework`, `neos/neos`, `neos/flow`, `cakephp/cakephp`, `symfony/symfony`)
+- `targetConstraint` (string, required): Composer constraint for the desired framework version (e.g. `^12.0`, `^11.0`, `^5.0`)
+- `includeDependencies` (boolean, optional): If `true`, also report non-framework dependencies and their latest stable. Default: `false`
+
+**Returns:** `{ framework, extensions_ready, extensions_blocked, dependencies?, summary }` where each entry is a small object with `name`, `current`, `suggested`, and a `breaking` flag.
+
+### 5. `read_composer_json`
 
 Read and parse a composer.json file.
 
 **Parameters:**
 - `path` (string, required): Absolute path to the composer.json file
 
-### 4. `analyze_project`
+### 6. `analyze_project`
 
-Analyze a Composer project for issues and improvements.
+Analyze a Composer project for issues and improvements. Compact by default.
 
 **Parameters:**
 - `projectPath` (string, required): Path to the project directory
+- `verbose` (boolean, optional): Include full per-package details and raw `composer validate` output. Default: `false`
 
 **Returns:**
 - Project metadata and configuration
 - Validation results (composer.json and composer.lock)
 - Dependency statistics
-- Outdated packages list
-- Security vulnerability report
+- Compact outdated packages list
+- Compact security advisory report
 - Actionable suggestions with severity levels
 
-### 5. `suggest_upgrades`
+### 7. `suggest_upgrades`
 
 Suggest available package upgrades for a project.
 
 **Parameters:**
 - `projectPath` (string, required): Path to the project directory
-- `includeMajor` (boolean, optional): Include major version upgrades (default: false)
+- `includeMajor` (boolean, optional): Include major version upgrades. Default: `false`
+- `targetConstraint` (string, optional): Composer constraint the latest version must satisfy (e.g. `^12.0` for TYPO3 12, `^10.0` for Laravel 10)
+- `packageFilter` (string, optional): Regex matched against the package name (e.g. `^typo3/`, `^laravel/`, `^symfony/`)
+- `verbose` (boolean, optional): Include each package's description. Default: `false`
 
 **Returns:**
 - List of available upgrades
@@ -148,39 +193,48 @@ Top Priority Issues:
 Recommendation: Address security issues immediately, then plan package updates.
 ```
 
-### 📦 Scenario 2: TYPO3 Major Version Upgrade
+### 📦 Scenario 2: Major Framework Upgrade
+
+The single biggest token win in this server: `plan_framework_upgrade` resolves an entire upgrade plan in one call.
 
 **AI Prompt:**
-> "I have this TYPO3 11 project and want to upgrade to TYPO3 12. Check the composer.json: what packages need updating and are there any compatibility issues to be aware of?"
+> "I have this TYPO3 11 project and want to upgrade to TYPO3 12. Which packages need updating and which ones don't have a compatible version yet?"
 
 **What the AI will do:**
-1. Use `analyze_project` to understand current dependencies
-2. Use `suggest_upgrades` with `includeMajor: true` to see TYPO3 12 availability
-3. Use `get_package_info` to check TYPO3 12 requirements
-4. Search for TYPO3 12 compatible versions of extensions
+1. Call `plan_framework_upgrade` with `frameworkPackage = "typo3/cms-core"` and `targetConstraint = "^12.0"`.
+2. (Optional) Call `find_compatible_versions` for any flagged blocked extension to confirm.
+
+The same flow works for any framework — just change the `frameworkPackage`:
+
+- TYPO3: `frameworkPackage = "typo3/cms-core"`, `targetConstraint = "^12.0"` (or `"^13.0"`)
+- Neos / Flow: `frameworkPackage = "neos/neos"` or `"neos/flow"`, `targetConstraint = "^9.0"`
+- Laravel: `frameworkPackage = "laravel/framework"`, `targetConstraint = "^11.0"`
+- CakePHP: `frameworkPackage = "cakephp/cakephp"`, `targetConstraint = "^5.0"`
+- Symfony: `frameworkPackage = "symfony/symfony"`, `targetConstraint = "^7.0"`
+
+The tool classifies every package in `require` / `require-dev` as:
+
+- **framework** — the framework package itself or its vendor-prefixed siblings (e.g. `typo3/cms-*` for TYPO3, `symfony/*` for Symfony, `laravel/*` for Laravel, `neos/*` for Neos, `cakephp/*` for CakePHP).
+- **extension** — any other package whose own `require` map references the framework package.
+- **dependency** — everything else (only emitted when `includeDependencies=true`).
 
 **Expected Output:**
 ```
-TYPO3 Upgrade Analysis:
+Framework Upgrade Plan (typo3/cms-core ^12.0):
 
-Current: TYPO3 11.5.35
-Target: TYPO3 12.4.11 (latest)
+Framework: typo3/cms-core 11.5.35 → v12.4.45 (available)
 
-Core Packages (6 packages):
-- typo3/cms-core: 11.5.35 → 12.4.11 [MAJOR]
-- typo3/cms-backend: 11.5.35 → 12.4.11 [MAJOR]
-- ... (all core packages follow)
+Extensions ready (10):
+- typo3/cms-backend       11.5.35 → v12.4.45  [breaking]  (core)
+- typo3/cms-frontend      11.5.35 → v12.4.45  [breaking]  (core)
+- georgringer/news         9.3.1 → 11.0.0     [breaking]
+- b13/container             2.3.0 → 2.3.2
+- mask/mask                 7.1.0 → 8.3.1     [breaking]
 
-Extensions to Update (8 packages):
-- georgringer/news: 9.3.1 → 11.0.0 [MAJOR - Breaking changes]
-- b13/container: 2.3.0 → 2.3.2 [PATCH - Safe]
-- mask/mask: 7.1.0 → 8.3.1 [MAJOR - Check changelog]
+Extensions blocked (1):
+- old/extension  (current: 1.2.0 — no version satisfying ^12.0 found on Packagist)
 
-Blocked Extensions (2 packages):
-- old/extension: No TYPO3 12 version available yet
-
-Recommendation: Review breaking changes in georgringer/news and mask/mask.
-Consider removing or replacing 'old/extension' before upgrading.
+Summary: framework=typo3/cms-core target=^12.0 ready=10 blocked=1 total_extensions=11
 ```
 
 ### 🔧 Scenario 3: Laravel Project Maintenance
